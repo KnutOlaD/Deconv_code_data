@@ -33,6 +33,8 @@ DATA & FILE OVERVIEW
 
 field_data.txt - data used in the field experiment in Dølven et al. (2022)
 
+fielddata.mat - matlab file containing only time vector, slow and fast sensor data
+
 Lab_experiment_data - data used in the laboratory experiment in Dølven et al. (2022)
 
 RTdetermination.csv - data used to determine the response time of the EB sensor
