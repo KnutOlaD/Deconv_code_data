@@ -5,12 +5,39 @@ Version 1.56
 @author: Knut Ola Dølven and Juha Vierinen
 
 Contains deconvolution, inlcuding automatic Delta T selection as described in 
-Dølven et al., (2021), but also includes a variant using Tikhonov regularization and all functions 
+Dølven et al., (2022), but also includes a variant using Tikhonov regularization and all functions 
 producing the results presented in Dølven et al., (2021). 
 The function that does deconvolution with automatic delta_t selection as  described in 
-Dølven et al., (2021) is named "deconv_master() which integrates all functions and is 
+Dølven et al., (2022) is named "deconv_master() which integrates all functions and is 
 the final product of this work. 
-"""
+Supporting functions are:
+    
+    diffusion_theory - Builds the theory matrix (m=Gx or eq.5 and 6 in Dølven et al., (2022))
+    
+    test_ua - Function that creates a step-change signal
+    
+    forward_model - Convolution model to simulate sensor response/measurements from an arbiry signal
+    
+    sime_meas - Function that makes simulated measurements using forward_model and test_ua
+    
+    find_kink - Regularization optimization using L-curve analysis finding maximum gradient point
+    
+    estimate_concentration - Estimates concentration using a least squares solution of diffusion_theory 
+        and measurement/setting input. Switch to non-negative least squares can be done here. 
+        
+    field_example_tikhonov - Estimates concentration using the field example data (see Dølven et al., 2022)
+        and tikhonov regularization
+        
+    field_example_model_complexity - Estimates concentration using field example data and complexity
+        regularization
+        
+    deconv_master - Estimates concentration for any dataset/input parameters (described in help(deconv_master))
+            returns vectors containing the estimated corrected data, measurement estimate, model time, 
+            standard deviation *2 (95% confidence) . The function also provides an L-curve plot, fit residual 
+            plot and estimate plot.
+                            
+    
+    """
 
 import matplotlib
 SMALL_SIZE = 14
@@ -18,15 +45,16 @@ matplotlib.rc('font', size=SMALL_SIZE)
 matplotlib.rc('axes', titlesize=SMALL_SIZE)
 import numpy as n
 import matplotlib.pyplot as plt
-import scipy.signal as s
+import scipy.signal as s #used if you want to use nonzero 
 import scipy.optimize as so
 import scipy.io as sio
 import scipy.interpolate as sint
 from scipy.interpolate import UnivariateSpline as unisp
 
+#Diffusion_theory Function that builds the theory matrix
 def diffusion_theory(u_m,                           # these are the measurements
                      t_meas,                        # measurement times
-                     missing_idx=[],
+                     missing_idx=[],                # if measurements are missing
                      k=1.0,                         # diffusion coefficient
                      t_model=n.linspace(0,5,num=100),   # time for model
                      sigma=0.01,                    # u_m measurement noise standard deviation
@@ -138,13 +166,16 @@ def sim_meas(t,u_a,k=1.0,u_m0=0.0):
     u_m=forward_model(t,u_a,k=k,u_m0=u_m0)
     # a simple model for measurement noise, which includes
     # noise that is always there, and noise that depends on the quantity
-    noise_std = 0.03#u_m*0.01 + 0.001
+    noise_std = u_m*0.01 + 0.001
     m=u_m + noise_std*n.random.randn(len(u_m))
     return(m,noise_std)
 
 #Function that finds delta t using cubic spline approx. to max curvature point
 #in L-curve
-def find_kink(err_norms,sol_norms,num_sol,n_models):
+def find_kink(err_norms, #  Solution norm (first-order differences of the maximum a posteriori solution)
+              sol_norms, #  Model fit residual norm (sum of residuals between model measurements and real measurements)
+              num_sol, # The number of timesteps in the solution
+              n_models): #Number of different models to be tested
     #Make log-versions of error norm and solution norm
     err_norms_lg = n.log(err_norms)
     sol_norms_lg = n.log(sol_norms)        
@@ -181,7 +212,13 @@ def find_kink(err_norms,sol_norms,num_sol,n_models):
     return(n_model)
 
 #Function that estimates concentration
-def estimate_concentration(u_m,u_m_stdev,t_meas,k,n_model=400,smoothness=1e-5,calc_var=True):
+def estimate_concentration(u_m, #Measurements 
+                           u_m_stdev, #Uncertainty of measurements  (same size as u_m)
+                           t_meas, #Time vector for measurements
+                           k, #Growth coefficient
+                           n_model=400, #Number of model points 
+                           smoothness=0, #The amount of smoothness. Set to zero to turn off Tikhonov regularization
+                           calc_var=True): #True if you want to model error propagation
 
     # how many grid points do we have in the model
     t_model=n.linspace(n.min(t_meas),n.max(t_meas),num=n_model)
@@ -214,7 +251,7 @@ def estimate_concentration(u_m,u_m_stdev,t_meas,k,n_model=400,smoothness=1e-5,ca
 def unit_step_test(k=0.1, #growth coefficient
                    missing_meas=False, #missing measurement trigger
                    missing_t=[14,16], #missing measurement location
-                   pfname="unit_step.png", 
+                   pfname="unit_step.png", #name of output figure
                    n_model = 'auto', #model complexity (number of model-points, i.e. delta T)
                    delta_ts = 'auto', #Range of delta-ts used to estimate L-curve. Specified as 'auto' (default), [min,max] of desired delta_t, or array of values
                    num_sol = 50): #Number of solutions used in L-curve
@@ -363,41 +400,9 @@ def unit_step_test(k=0.1, #growth coefficient
     print("Delta t equals")
     print(n.abs(((max(t)-min(t))/n_model)))
 
-def sensor_example(pfname="methane.png"):
+def field_example_tikhonov(): #same as sensor_example just with tikhonov regularization
     # read lab data
-    d=sio.loadmat("time.mat")
-    t=d["time"][0]
-    u_m_meas=d["slowsens"][0]
-    u_a_fast=d["fastsens"][0]
-
-    # error standard deviation
-    sigma=(0.001*n.abs(u_m_meas) + 0.1)*4.0
-
-    k=(60.0*24.0)/30.0
-    u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std= estimate_concentration(u_m_meas, sigma, t, k, n_model=200, smoothness=0) #was 1e-5
-
-    plt.figure()
-    plt.plot(t,u_m_meas,label="Slow sensor $u_m(t)$")
-    plt.plot(t,u_a_fast,label="Fast sensor $\\hat{u}_a(t)$")
-    plt.plot(t_model,u_a_estimate,label="Slow sensor $\\hat{u}_a(t)$")
-    plt.plot(t_model,u_a_estimate+u_a_std*2,color="lightgreen")
-    lb=u_a_estimate-u_a_std*2
-    lb[lb<0]=0.0
-    plt.plot(t_model,lb,color="lightgreen")
-    plt.ylabel("Concentration (ppm)")
-    plt.xlabel("Time (days)")    
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(pfname)
-    plt.show()
-    
-    plt.figure()
-    plt.plot(t_model,u_a_std)
-    plt.show()
-
-def field_example_tikhonov():
-    # read lab data
-    d=sio.loadmat("fielddata.mat")
+    d=sio.loadmat("fielddata.mat") 
     t=n.copy(d["time"])[:,0]
     u_slow=n.copy(d["slow"])[:,0]
     u_fast=n.copy(d["fast"])[:,0]
@@ -460,15 +465,15 @@ def field_example_model_complexity():
     # Use only model sparsity (sampling rate of the model) as the a priori assumption
     # We set smoothness to zero, which turns off Tikhonov regularization.
     # read data
-    d=sio.loadmat("time.mat")
+    d=sio.loadmat("time.mat") #data matrix
     #t=n.copy(d["time"])[:,0]
     #u_slow=n.copy(d["slowsens"])[:,0]
     #u_fast=n.copy(d["fastsens"])[:,0]
     
     #For time.mat
-    t=n.copy(d["time"])[:]
-    u_slow=n.copy(d["slowsens"])[:]
-    u_fast=n.copy(d["fastsens"])[:]
+    t=n.copy(d["time"])[:] #time vector
+    u_slow=n.copy(d["slowsens"])[:] #slow sensor data
+    u_fast=n.copy(d["fastsens"])[:] #fast sensor data
         
     k=(60.0*24.0)/40.0 #Growth coefficient
     n_model = 'auto' #model complexity (number of model-points, i.e. delta T)
@@ -739,7 +744,6 @@ def deconv_master(u_slow,t,k,
     return(u_a_est,u_m_est,t_model,u_a_std,resid)
           
 if __name__ == "__main__":
-    #sensor_example()
     unit_step_test(pfname="unit_step.png",num_sol=100)    
     #unit_step_test(missing_meas=True,pfname="unit_step_missing.png")    
     #use model sparsity (finite number of samples) to regularize the solution   
