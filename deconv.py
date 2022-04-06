@@ -530,10 +530,10 @@ def field_example_model_complexity():
         u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
-        err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0)
+        err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0) #Model fit residual norm
         # Calculate the fit residual norm
         #sol_norms[i]=n.sum(n.abs(n.diff(n.diff(u_a_est)))**2.0) #OLD
-        sol_norms[i] = n.sum(n.abs(n.diff(u_a_est)))**2.0 #New fit residual norm
+        sol_norms[i] = n.sum(n.abs(n.diff(u_a_est)))**2.0 #New solution norm
         
         print("Number of model points=%d fit residual norm %1.2f norm of solution second difference %1.2f dt=%1.2f (seconds)"%(n_models[i],err_norms[i],sol_norms[i], 24*3600*(n.max(t)-n.min(t))/float(n_models[i]) ))
                 
@@ -744,15 +744,13 @@ def deconv_master(u_slow,t,k,
     return(u_a_est,u_m_est,t_model,u_a_std,resid)
           
 if __name__ == "__main__":
-    unit_step_test(pfname="unit_step.png",num_sol=100)    
+    #unit_step_test(pfname="unit_step.png",num_sol=100)    
     #unit_step_test(missing_meas=True,pfname="unit_step_missing.png")    
     #use model sparsity (finite number of samples) to regularize the solution   
     #field_example_model_complexity()
-    
-    
-    
     #Use deconv_master to deconvolve data from the field experiment:
-    '''
+        
+    
     d=sio.loadmat("fielddata.mat")
     t=n.copy(d["time"])[:,0]
     u_slow=n.copy(d["slow"])[:,0]
@@ -762,6 +760,44 @@ if __name__ == "__main__":
     sigma = 0.03*u_slow
     k = 1/(39*60) #In seconds because time vector is in seconds
     
-    deconv_master(u_slow,t,k,sigma = sigma)#, N = 120,num_sol=1)
+    deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
+    
+    u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
+
+ 
+    ### Write to file ###
+
+    F=open("C:/Users/kdo000/Downloads/filename.csv",'w')  
+
+
+    #Write parameters to file F line by line
+
+    for i in range(len(u_a_est)):
+
+        F.write(str(t_model[i]) + '\t' + str(u_a_est[i]) + '\t' + str(u_m_est[i]) + '\t' + str(u_a_std[i])+ '\t' + str(u_a_std[i]) + "\n")
+
+    F.close()
+    
+    um_fun=sint.interp1d(t_model,u_m_est)
+    u_m_j=um_fun(t)
+    
+    F=open("C:/Users/kdo000/Downloads/filename2.csv",'w')  
+    
+    for i in range(len(t)):
+
+        F.write(str(t[i]) + '\t' + str(u_slow[i]) + '\t' + str(u_m_est[i]) + '\t' + str(u_a_std[i])+ '\t' + str(u_a_std[i]) + "\n")
+
+    F.close()
+    
+    
+    plt.figure()
+    
+    plt.plot(t_model,u_a_est)
+    plt.plot(t,u_fast)
+    
+    plt.plot(t,u_slow)
+    plt.plot(t,u_m_j)
+    
+    
   
-    '''
+   
