@@ -583,8 +583,9 @@ def deconv_master(u_slow,t,k,
                   num_sol=30,
                   N = 'auto'):
     ''' Function that deconvolves sensor data and returns vectors containing
-    the estimated corrected data, measurement estimate, model time, 
-    standard deviation *2 (95% confidence)
+    the estimated corrected data (u_a_estimate), measurement estimate (u_m_estimate), 
+    model time (model_time), uncertainty estimate (standard deviation) 
+    std_uncertainty_estimate), model fit residuals (fit_resids)).
     Function also provides an L-curve plot, fit residual plot and estimate plot.
     
     u_a_estimate,u_m_estimate,model_time,std_uncertainty_estimate,fit_resids=
@@ -721,6 +722,7 @@ def deconv_master(u_slow,t,k,
     resid=um_fun(m_t) - m_u_slow
     #plt.plot(m_t[good_m_idx],um_fun(m_t[good_m_idx]) - m_u_slow[good_m_idx],"o")
     plt.plot(m_t,um_fun(m_t)-m_u_slow,"x")
+    plt.plot(m_t,um_fun(m_t)-m_u_slow)
     #This is only for the limits in the resid-plot... 
     std_est=n.median(n.abs(um_fun(m_t)-m_u_slow))
     plt.axhline(3*std_est)
@@ -757,47 +759,17 @@ if __name__ == "__main__":
     u_fast=n.copy(d["fast"])[:,0]
     t = t-min(t)
     t = t*86400
+    t_fast = t
     sigma = 0.03*u_slow
     k = 1/(39*60) #In seconds because time vector is in seconds
     
-    deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
+   # deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
+   
+    u_slow = u_slow[0:len(u_slow):1]
+    t = t[0:len(t):1]   
+    sigma = sigma[0:len(sigma):1]
     
-    u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
+    u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma)#, N = 120,num_sol=1)
 
  
-    ### Write to file ###
-
-    F=open("C:/Users/kdo000/Downloads/filename.csv",'w')  
-
-
-    #Write parameters to file F line by line
-
-    for i in range(len(u_a_est)):
-
-        F.write(str(t_model[i]) + '\t' + str(u_a_est[i]) + '\t' + str(u_m_est[i]) + '\t' + str(u_a_std[i])+ '\t' + str(u_a_std[i]) + "\n")
-
-    F.close()
-    
-    um_fun=sint.interp1d(t_model,u_m_est)
-    u_m_j=um_fun(t)
-    
-    F=open("C:/Users/kdo000/Downloads/filename2.csv",'w')  
-    
-    for i in range(len(t)):
-
-        F.write(str(t[i]) + '\t' + str(u_slow[i]) + '\t' + str(u_m_est[i]) + '\t' + str(u_a_std[i])+ '\t' + str(u_a_std[i]) + "\n")
-
-    F.close()
-    
-    
-    plt.figure()
-    
-    plt.plot(t_model,u_a_est)
-    plt.plot(t,u_fast)
-    
-    plt.plot(t,u_slow)
-    plt.plot(t,u_m_j)
-    
-    
-  
    
