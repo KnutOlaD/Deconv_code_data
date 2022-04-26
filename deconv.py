@@ -377,8 +377,8 @@ def unit_step_test(k=0.1, #growth coefficient
     plt.text((sol_err_norm),(sol_sol_norm),"$\Delta t$=%.2f"%(n.abs(((max(t)-min(t))/n_model))))
     #plt.text((err_norms[idxs[i]]),(sol_norms[idxs[i]]),"$\Delta t$=%.2f"%(n.abs(((max(t)-min(t))/n_models[idxs[i]]))))    
     #plt.text((err_norms[idxs[i]]),(sol_norms[idxs[i]]),"$N$=%d"%(n_models[idxs[i]]))
-    plt.xlabel("Fit error residual $E_m$",FontSize = 20)
-    plt.ylabel("Norm of solution $E_s$", FontSize = 20)    
+    plt.xlabel("Fit error residual $E_m$")#,FontSize = 20)
+    plt.ylabel("Norm of solution $E_s$")#, FontSize = 20)    
     plt.xlim((-4,-3))
     plt.show()
     
@@ -558,8 +558,9 @@ def field_example_model_complexity():
        
     # plot how many samples are used to represent the concentration
     plt.text((sol_err_norm),(sol_sol_norm),"$\Delta t$=%.2f"%(60*60*24*n.abs(((max(t_model)-min(t_model))/n_model))))
-    plt.xlabel("Fit error residual $E_m$",FontSize = 20)
-    plt.ylabel("Norm of solution $E_s$", FontSize = 20)    
+    # FontSize doesn't work on linux for some reason?
+    plt.xlabel("Fit error residual $E_m$")#,FontSize = 20)
+    plt.ylabel("Norm of solution $E_s$")#, FontSize = 20)    
     plt.show()
     
     #Make plot of result estimate
@@ -712,8 +713,8 @@ def deconv_master(u_slow,t,k,
     plt.loglog(sol_err_norm,sol_sol_norm,"*",color="Red")
     # plot where the used delta_t is in the L-curve: 
     plt.text((sol_err_norm),(sol_sol_norm),"$\Delta t$=%.2f"%(n.abs(((max(t_model)-min(t_model))/n_model))))
-    plt.xlabel("Fit error residual $E_m$",FontSize = 20)
-    plt.ylabel("Norm of solution $E_s$", FontSize = 20)    
+    plt.xlabel("Fit error residual $E_m$")#,FontSize = 20)
+    plt.ylabel("Norm of solution $E_s$")#, FontSize = 20)    
     plt.show()
     
     # plot fit residuals
