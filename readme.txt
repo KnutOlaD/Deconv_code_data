@@ -51,5 +51,4 @@ PUBLICATION AND HOW TO CITE
 ---------------------------
 
 Dølven, K. O., Vierinen, J., Grilli, R., Triest, J., and Ferré, B.: Response time correction of slow 
-response sensor data by deconvolution of the growth-law equation, Geosci. Instrum. Method. Data Syst. 
-Discuss. [preprint], https://doi.org/10.5194/gi-2021-28, in review, 2021.
+response sensor data by deconvolution of the growth-law equation, Geosci. Instrum. Method. Data Syst. https://doi.org/10.5194/gi-11-293-2022, 11, 293–306, 2022.
