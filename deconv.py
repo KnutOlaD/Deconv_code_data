@@ -118,7 +118,7 @@ def diffusion_theory(u_m,                           # these are the measurements
             A[i+n_model,idx+n_model] = w
             m[i+n_model]=u_m[i]/sigma[i]
 
-    # smoothness regularization using tikhonov 2nd order difference
+    # smoothness regularization using tikhonov 2nd order difference (not included by default)
     for i in range(n_model-2):
         A[i+n_model+n_meas,i+0] =      smoothness/dt
         A[i+n_model+n_meas,i+1] = -2.0*smoothness/dt
@@ -244,7 +244,7 @@ def estimate_concentration(u_m, #Measurements
         u_a_std=n.repeat(0,n_model)
         u_m_std=n.repeat(0,n_model)        
     
-    return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std)
+    return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std, Sigma_p)
 
 
 #Toy model simulation test function. Automatically produces an L-Curve plot
@@ -698,7 +698,7 @@ def deconv_master(u_slow,t,k,
         n_model = N #If N is specified
         
     ### Make final estimate using the delta_t found or defined:
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std = estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0)
     
     ### Get error and solution norms for the chosen delta t
     um_fun=sint.interp1d(t_model,u_m_est) #Returns a function that interpolates
