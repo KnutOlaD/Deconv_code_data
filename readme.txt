@@ -3,7 +3,7 @@ This README file was generated on 2022-04-05 by Knut Ola Dølven.
 -------------------
 GENERAL INFORMATION
 -------------------
-// Repository for code and data accompanying Dølven et al., (2021) (see bottom for publication info)
+// Repository for code and data accompanying Dølven et al., (2022) (see bottom for publication info)
 
 // Contact Information
      // Name: Knut Ola Dølven	
@@ -15,7 +15,7 @@ GENERAL INFORMATION
 // Contributors (data): Roberto Grilli, Jack Triest
 // Controbutors (method developement): Knut Ola Dølven, Juha Vierinen, Roberto Grilli, Jack Tries, Bénédicte Férre
 
-// For date of data collection, geographic location, funding sources, and description of data: See Dølven et al. (2021) 
+// For date of data collection, geographic location, funding sources, and description of data: See Dølven et al. (2022) 
 
 --------------------------
 METHODOLOGICAL INFORMATION
@@ -25,7 +25,7 @@ Reconstruction of a fast response signal from slow response sensor data is achie
 We apply a weighted linear least squares estimator and the growth-law as measurement model. Regularization of the solution is 
 done using model sparsity, assuming changes occurs with a particular time-step, or tikhonov regularization (optional in code).
 The amount of regularization is optimized using L-curve analysis, but can also be selected manually based on domain-specific 
-knowledge. See commentary in deconv.py for specifics and DØlven et al. (2021) for a full detailed description.
+knowledge. See commentary in deconv.py for specifics and Dølven et al. (2022) for a full detailed description.
 
 --------------------
 DATA & FILE OVERVIEW
