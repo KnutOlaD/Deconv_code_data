@@ -234,6 +234,8 @@ def estimate_concentration(u_m, #Measurements
     u_a_estimate=xhat[0:n_model]
     u_m_estimate=xhat[n_model:(2*n_model)]    
 
+    Sigma_p = []
+
     if calc_var:
         # a posteriori error covariance
         Sigma_p=n.linalg.inv(n.dot(n.transpose(A),A))
@@ -246,7 +248,7 @@ def estimate_concentration(u_m, #Measurements
         u_a_std=n.repeat(0,n_model)
         u_m_std=n.repeat(0,n_model)        
     
-    return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std)
+    return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std, Sigma_p)
 
 
 #Toy model simulation test function. Automatically produces an L-Curve plot
@@ -682,7 +684,7 @@ def deconv_master(u_slow,t,k,
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False,L_factor=L_factor)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std, sigma_map= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False,L_factor=L_factor)
 
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
@@ -703,14 +705,14 @@ def deconv_master(u_slow,t,k,
         n_model = N #If N is specified
         
     ### Make final estimate using the delta_t found or defined:
-    u_a_est, u_m_est, t_model, u_a_std1, u_m_std1= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e5)
-    u_a_est, u_m_est, t_model, u_a_std2, u_m_std2= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e4)
-    u_a_est, u_m_est, t_model, u_a_std3, u_m_std3= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e3)
-    u_a_est, u_m_est, t_model, u_a_std4, u_m_std4= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e1)
-    plt.plot(t_model,u_a_std1/2,".",label="$\gamma=10^5$")
-    plt.plot(t_model,u_a_std2/2,".",label="$\gamma=10^4$")
-    plt.plot(t_model,u_a_std3/2,".",label="$\gamma=10^3$")
-    plt.plot(t_model,u_a_std4/2,".",label="$\gamma=1$")
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std, sigma_map= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e5)
+    u_a_est2, u_m_est2, t_model, u_a_std2, u_m_std2, sigma_map= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e4)
+    u_a_est3, u_m_est3, t_model, u_a_std3, u_m_std3, sigma_map= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e3)
+    u_a_est4, u_m_est4, t_model, u_a_std4, u_m_std4, sigma_map= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, L_factor=1e1)
+    plt.plot(t_model,u_a_std,".",label="$\gamma=10^5$")
+    plt.plot(t_model,u_a_std2,".",label="$\gamma=10^4$")
+    plt.plot(t_model,u_a_std3,".",label="$\gamma=10^3$")
+    plt.plot(t_model,u_a_std4,".",label="$\gamma=1$")
     plt.legend()
     plt.show()
     
@@ -759,7 +761,37 @@ def deconv_master(u_slow,t,k,
     plt.title("Number of model points N=%d $\Delta t=%1.2f (s)$"%(n_model,dt))   
     plt.show()
     
-    return(u_a_est,u_m_est,t_model,u_a_std,resid)
+    plt.figure()
+    plt.plot(t_model,u_a_std,markerfacecolor='none',label="$\gamma=10^5$")
+    plt.plot(t_model,u_a_std2,linestyle='--',label="$\gamma=10^4$")
+    plt.plot(t_model,u_a_std3,linestyle='-.',label="$\gamma=10^3$")
+    plt.plot(t_model,u_a_std4,linestyle=':',markerfacecolor='none',label="$\gamma=1$")
+    plt.legend()
+    plt.show()
+    
+    
+    plt.figure()
+    plt.plot(t,u_slow,color='black',label='Raw HISEM data')
+    plt.plot(t_model,u_a_est,label="$\gamma=10^5$")
+    plt.plot(t_model,u_a_est2,linestyle='--',label="$\gamma=10^4$")
+    plt.plot(t_model,u_a_est3,linestyle='-.',label="$\gamma=10^3$")
+    plt.plot(t_model,u_a_est4,linestyle=':',markerfacecolor='none',label="$\gamma=1$")
+    plt.legend()
+    plt.show()
+    
+     
+    plt.figure()
+    plt.plot(n.arange(len(sigma_map)),sigma_map[50,:])
+    
+
+    plt.figure()
+    plt.pcolor(sigma_map)
+    #plt.imshow(sigma_map)
+    #plt.clim(-0.1,0.5)
+    plt.colorbar()         
+    
+    
+    return(u_a_est,u_m_est,t_model,u_a_std,resid,sigma_map)
           
 if __name__ == "__main__":
     #unit_step_test(pfname="unit_step.png",num_sol=100)    
@@ -776,7 +808,7 @@ if __name__ == "__main__":
     t = t-min(t)
     t = t*86400
     t_fast = t
-    sigma = 0.03*u_slow
+    sigma = 0.015*u_slow
     k = 1/(39*60) #In seconds because time vector is in seconds
     
    # deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
@@ -785,7 +817,20 @@ if __name__ == "__main__":
     t = t[0:len(t):1]   
     sigma = sigma[0:len(sigma):1]
     
-    u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,delta_t=55,num_sol=1,sigma = sigma)#, N = 120,num_sol=1)
+    u_a_est,u_m_est,t_model,u_a_std,resid,sigma_map = deconv_master(u_slow,t,k,delta_t=55,num_sol=1,sigma = sigma)#, N = 120,num_sol=1)
 
+    
+    plt.figure()
+    plt.plot(n.arange(len(sigma_map)),sigma_map[100,:])
+    
+
+    plt.figure()
+    plt.pcolor(sigma_map)
+    #plt.imshow(sigma_map)
+    plt.clim(-0.5,1.5)
+    plt.gca().invert_yaxis()
+    plt.colorbar()         
+    
  
+    
    
