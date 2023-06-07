@@ -36,8 +36,10 @@ Supporting functions are:
             standard deviation *2 (95% confidence) . The function also provides an L-curve plot, fit residual 
             plot and estimate plot.
                             
-    
-    """
+At the and of this file, initiation for the examples in the manuscript is presented as well as an example of how
+to set up and run your own cases.
+            
+"""
 
 import matplotlib
 SMALL_SIZE = 14
@@ -51,14 +53,37 @@ import scipy.io as sio
 import scipy.interpolate as sint
 from scipy.interpolate import UnivariateSpline as unisp
 
-#Diffusion_theory Function that builds the theory matrix
+#################################################
+################### FUNCTIONS ###################
+#################################################
+
 def diffusion_theory(u_m,                           # these are the measurements
                      t_meas,                        # measurement times
                      missing_idx=[],                # if measurements are missing
-                     k=1.0,                         # diffusion coefficient
+                     k=1.0,                         # growth law coefficient
                      t_model=n.linspace(0,5,num=100),   # time for model
                      sigma=0.01,                    # u_m measurement noise standard deviation
                      smoothness=1.0):                   
+    '''
+    Function that builds the theory matrix 
+    Creates the theory matrix (G in m=Gx). Allows for missing measurements and smoothness/Tikhonov regularization.
+    If smoothness parameter is set to zero, the function creates the theory matrix presented in Eq. 5/6 in 
+    Dølven et al., (2022). If set to a value >0, the function creates a theory matrix that includes Thikonov
+    regularization adjusted by the smoothness parameter (higher is smoother).
+
+    Inputs:
+        u_m - measurements
+        t_meas - measurement times
+        missing_idx - if measurements are missing, include index of missing measurements
+        k - growth law coefficient
+        t_model - time for model
+        sigma - u_m measurement noise standard deviation/error estimate of the measurements
+        smoothness - smoothness regularization parameter (set to zero to turn off)
+
+    Outputs:
+        A - theory matrix of size (n_meas + n_model + n_model-2,n_model*2)
+        m - measurement vector of size (n_meas + n_model + n_model-2)
+    '''
 
     #Vector/matrix sizes:
     n_meas=len(t_meas)
@@ -109,7 +134,7 @@ def diffusion_theory(u_m,                           # these are the measurements
                     
     # measurements u_m(t_1) ... u_m(t_N)
     # weight based on error standard deviation
-    idx=n.arange(n_model,dtype=n.int)
+    idx=n.arange(n_model,dtype=int)
     for i in range(n_meas):
         if i not in missing_idx:
             # linear interpolation between model points
@@ -128,9 +153,29 @@ def diffusion_theory(u_m,                           # these are the measurements
     # return theory matrix
     return(A,m)
 
-#Simulate step change in ambient concentration
-def test_ua(t,t_on=1.0,u_a0=1.0,u_a1=1.0):
-    """ simulated measurement """
+
+#####################################################################################################
+
+
+def test_ua(t,
+            t_on=1.0,
+            u_a0=1.0,
+            u_a1=1.0):
+    """ 
+    Function that simulates sensor data response of a equilibrium based sensor with specifics 
+    given in the function input list to a step change in ambient concentration.
+    The measurements are simulated iteratively using a closed form solution of the growth law 
+    equation, i.e. du_m/dt = k(u_a-u_m), see Eq. 1 in Dølven et al., 2022.
+
+    Inputs:
+        t - time vector
+        t_on - time when the step change occurs
+        u_a0 - initial concentration
+        u_a1 - final concentration
+
+    Outputs:
+        u_a - Simulated sensor data
+     """
     # this is a simulated true instantaneous concentration
     # simple "on" at t_on model and gradual decay
     u_a=n.zeros(len(t))
@@ -142,9 +187,28 @@ def test_ua(t,t_on=1.0,u_a0=1.0,u_a1=1.0):
     u_a[t<t_on]=0.0    
     return(u_a)
 
-#Create forward model (convolution)
-def forward_model(t,u_a,k=1.0,u_m0=0.0):
-    """ forward model """
+
+#####################################################################################################
+
+
+def forward_model(t,
+                  u_a,
+                  k=1.0,
+                  u_m0=0.0):
+    """ 
+    Function that calculates the theoretical sensor response (without noise) to a given input signal, 
+    i.e. the forward model of the sensor. The response time of the sensor can vary through the 
+    measuring period and is given by the growth law coefficient k. 
+
+    Inputs:
+        t - time vector
+        u_a - ambient concentration (concentration on the outside), N x 1 vector
+        u_m0 = initial boundary condition for the diffused quantity (no longer active in this version)
+        k - growth law coefficient, scalar if constant, array of size N x 1 if variable
+
+    Outputs:
+        u_m - Simulated sensor data
+    """
     # evaluate the forward model, which includes slow diffusion
     # t is time
     # u_a is the concentration
@@ -152,16 +216,39 @@ def forward_model(t,u_a,k=1.0,u_m0=0.0):
     # u_m0 is the initial boundary condition for the diffused quantity
     u_m = n.zeros(len(t))
     dt = n.diff(t)[0]
-    if len(k):
+    if len(k): #If k is an array, i.e. if you have variable growth coefficient
         for i in range(1,len(t)):
             u_m[i]=u_a[i] - (u_a[i]-u_m[i-1])*n.exp(-k[i]*dt)
-    else:
+    else: #If k is a scalar, i.e. if you have constant growth coefficient
         for i in range(1,len(t)):
             u_m[i]=u_a[i] - (u_a[i]-u_m[i-1])*n.exp(-k*dt)
     return(u_m)
 
-#Simulate data collected in toy-model
-def sim_meas(t,u_a,k=1.0,u_m0=0.0):
+
+#####################################################################################################
+
+
+def sim_meas(t,
+             u_a,
+             k=1.0,
+             u_m0=0.0):
+    """
+    Function that simulates measurements from an EB sensor using the growth law equation including 
+    noise. Essensially just adds noise on top of the output data from the forward_model - function.
+    The noise added her is a simple model for measurement noise, which includes noise that is always
+    there (std=0.001), and noise that depends on the quantity (u_m*0.01), see Eq, 13 in Dølven et al.
+    (2022).
+
+    Inputs:
+        t - time vector
+        u_a - ambient concentration (concentration on the outside), N x 1 vector
+        k - growth law coefficient, scalar if constant, array of size N x 1 if variable
+        u_m0 - initial boundary condition for the diffused quantity
+
+    Outputs:
+        m - Simulated sensor data
+        noise_std - Noise standard deviation
+    """ 
     # simulate measurements, including noise
     u_m=forward_model(t,u_a,k=k,u_m0=u_m0)
     # a simple model for measurement noise, which includes
@@ -170,12 +257,30 @@ def sim_meas(t,u_a,k=1.0,u_m0=0.0):
     m=u_m + noise_std*n.random.randn(len(u_m))
     return(m,noise_std)
 
-#Function that finds delta t using cubic spline approx. to max curvature point
-#in L-curve
-def find_kink(err_norms, #  Solution norm (first-order differences of the maximum a posteriori solution)
-              sol_norms, #  Model fit residual norm (sum of residuals between model measurements and real measurements)
-              num_sol, # The number of timesteps in the solution
-              n_models): #Number of different models to be tested
+
+#####################################################################################################
+
+
+def find_kink(err_norms, 
+              sol_norms, 
+              num_sol, 
+              n_models): 
+    """
+    Function that finds the optimal regularization parameter (delta_t) using L-curve analysis. The 
+    function finds the kink in the L-curve by finding the maximum curvature point. The curvature is
+    found by applying a spline approximation to the calculated points tracing the L-curve. The maximum
+    curvature of the spline fit is then found by calculating the second derivative of the spline fit.
+
+    Inputs:
+        err_norms - Solution norm (first-order differences of the maximum a posteriori solution)
+        sol_norms - Model fit residual norm (sum of residuals between model measurements and real measurements)
+        num_sol - The number of timesteps in the solution
+        n_models - Number of different models to be tested
+
+    Outputs:
+        n_model - Optimal regularization parameter (delta_t)
+    """
+ 
     #Make log-versions of error norm and solution norm
     err_norms_lg = n.log(err_norms)
     sol_norms_lg = n.log(sol_norms)        
@@ -211,7 +316,10 @@ def find_kink(err_norms, #  Solution norm (first-order differences of the maximu
    
     return(n_model)
 
-#Function that estimates concentration
+
+#####################################################################################################
+
+
 def estimate_concentration(u_m, #Measurements 
                            u_m_stdev, #Uncertainty of measurements  (same size as u_m)
                            t_meas, #Time vector for measurements
@@ -219,6 +327,39 @@ def estimate_concentration(u_m, #Measurements
                            n_model=400, #Number of model points 
                            smoothness=0, #The amount of smoothness. Set to zero to turn off Tikhonov regularization
                            calc_var=True): #True if you want to model error propagation
+    """
+    Function that estimates the concentration using a least squares solution of the theory matrix 
+    calculated by the diffusion_theory function. Interpolates the solution onto a grid determined
+    by the input variable n_model. The function also calculates the uncertainty of the
+    estimated concentration if calc_var is set to True. The uncertainty is calculated using the
+    a posteriori error covariance matrix (Sigma_p) and the standard deviation of the estimated
+    concentration is calculated as the square root of the diagonal elements of Sigma_p. Outputs 
+    also the estimated measurements (u_m_estimate) and the time vector for the model (t_model).
+
+    The function essensially calculates the solution to Eq. 5/6 using eq. 10 and gets the uncertainty
+    using eq. 11 in Dølven et al., (2022).
+
+    A purely Tikhonov regularized solution can be obtained by setting n_model to the same size as the 
+    measurement vector (len(u_m)) and setting smoothness to a value >0.
+
+    Inputs:
+        u_m - measurements
+        u_m_stdev - uncertainty of measurements (same size as u_m)
+        t_meas - time vector for measurements
+        k - growth coefficient
+        n_model - number of model points
+        smoothness - the amount of smoothness. Set to zero to turn off Tikhonov regularization
+        calc_var - True if you want to model error propagation
+
+    Outputs:
+        u_a_estimate - Estimated concentration
+        u_m_estimate - Estimated measurements
+        t_model - Time vector for model
+        u_a_std - Standard deviation of estimated concentration
+        u_m_std - Standard deviation of estimated measurements
+        Sigma_p - A posteriori error covariance matrix
+
+    """
 
     # how many grid points do we have in the model
     t_model=n.linspace(n.min(t_meas),n.max(t_meas),num=n_model)
@@ -240,14 +381,16 @@ def estimate_concentration(u_m, #Measurements
         std_p=n.sqrt(n.diag(Sigma_p))
         u_a_std=std_p[0:n_model]
         u_m_std=std_p[n_model:(2*n_model)]
+        return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std, Sigma_p)
     else:
         u_a_std=n.repeat(0,n_model)
         u_m_std=n.repeat(0,n_model)        
+        return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std)
     
-    return(u_a_estimate, u_m_estimate, t_model, u_a_std, u_m_std, Sigma_p)
+
+#####################################################################################################   
 
 
-#Toy model simulation test function. Automatically produces an L-Curve plot
 def unit_step_test(k=0.1, #growth coefficient
                    missing_meas=False, #missing measurement trigger
                    missing_t=[14,16], #missing measurement location
@@ -255,6 +398,25 @@ def unit_step_test(k=0.1, #growth coefficient
                    n_model = 'auto', #model complexity (number of model-points, i.e. delta T)
                    delta_ts = 'auto', #Range of delta-ts used to estimate L-curve. Specified as 'auto' (default), [min,max] of desired delta_t, or array of values
                    num_sol = 50): #Number of solutions used in L-curve
+    
+    """
+    Toy model simulation test function. Function that runs the simulation experiment presented
+    in Dølven et al., (2022) using the functions in this script. Produces a figure showing the
+    results of the simulation experiment. 
+
+    Inputs:
+        k - growth coefficient
+        missing_meas - missing measurement trigger
+        missing_t - missing measurement location
+        pfname - name of output figure
+        n_model - model complexity (number of model-points, i.e. delta T)
+        delta_ts - Range of delta-ts used to estimate L-curve. Specified as 'auto' (default), [min,max] of desired delta_t, or array of values
+        num_sol - Number of solutions used in L-curve
+
+    Outputs:
+        Figure showing the results of the simulation experiment
+    
+    """
     
     t=n.linspace(0,50,num=500) #size of simulation sample
     
@@ -302,7 +464,7 @@ def unit_step_test(k=0.1, #growth coefficient
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m, noise_std, t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m, noise_std, t, k, n_model=int(n_models[i]), smoothness=0.0,calc_var=False)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
         err_norms[i]=n.sum(n.abs(um_fun(t) - m)**2.0)
@@ -355,7 +517,7 @@ def unit_step_test(k=0.1, #growth coefficient
     lower_bound[lower_bound<0]=0.0
     plt.plot(t_model,lower_bound,color="lightblue")
     plt.plot(t_model,u_m_estimate,label="Estimate $\\hat{u}_m(t)$",color="purple")
-    idx=n.arange(len(t),dtype=n.int)
+    idx=n.arange(len(t),dtype=int)
     idx=n.setdiff1d(idx,missing_idx)
     plt.plot(t[0::4],m[0::4],".",label="Missing measurement at t = 15-17",color="red")
     
@@ -400,12 +562,30 @@ def unit_step_test(k=0.1, #growth coefficient
     print("Delta t equals")
     print(n.abs(((max(t)-min(t))/n_model)))
 
+
+#####################################################################################################
+
+
 def field_example_tikhonov(): #same as sensor_example just with tikhonov regularization
+    """
+    Function that runs the field example presented in Dølven et al., (2022) using the functions in
+    this script, datafiles from this repository and Thikonov regularization. Produces a figure showing 
+    the results.
+
+    Inputs:
+        None
+
+    Outputs:
+        Figure showing the results of the field example with Thikonov regularization
+        
+    """
     # read lab data
     d=sio.loadmat("fielddata.mat") 
     t=n.copy(d["time"])[:,0]
     u_slow=n.copy(d["slow"])[:,0]
     u_fast=n.copy(d["fast"])[:,0]
+    t = t-min(t)
+    t = t*86400.0
 
     # remove nan values
     idx=n.where(n.isnan(u_slow)!=True)[0]
@@ -451,7 +631,7 @@ def field_example_tikhonov(): #same as sensor_example just with tikhonov regular
 
     sm=10**(-4.0)
     print("fitting")    
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=sm)    
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=sm,calc_var=False)
 
     print("plotting")
     plt.plot(m_t,m_u_slow)
@@ -461,20 +641,32 @@ def field_example_tikhonov(): #same as sensor_example just with tikhonov regular
     plt.plot(t_model,u_a_est-2*u_a_std,color="lightgreen")        
     plt.show()
 
+
+#####################################################################################################
+
+
 def field_example_model_complexity():
+    """
+    Function that runs the field example presented in Dølven et al., (2022) using the functions in
+    this script, datafiles from this repository and only sparsity regularization - the solution 
+    provided in Dølven et al., (2022). Produces a figure showing the results.
+
+    Inputs:
+        None
+
+    Outputs:
+        Figure showing the results of the field example with sparsity regularization only 
+        
+    """
     # Use only model sparsity (sampling rate of the model) as the a priori assumption
     # We set smoothness to zero, which turns off Tikhonov regularization.
     # read data
-    d=sio.loadmat("time.mat") #data matrix
-    #t=n.copy(d["time"])[:,0]
-    #u_slow=n.copy(d["slowsens"])[:,0]
-    #u_fast=n.copy(d["fastsens"])[:,0]
-    
-    #For time.mat
-    t=n.copy(d["time"])[:] #time vector
-    u_slow=n.copy(d["slowsens"])[:] #slow sensor data
-    u_fast=n.copy(d["fastsens"])[:] #fast sensor data
-        
+   
+    d=sio.loadmat("fielddata.mat")
+    t=n.copy(d["time"])[:,0]
+    u_slow=n.copy(d["slow"])[:,0]
+    u_fast=n.copy(d["fast"])[:,0]
+
     k=(60.0*24.0)/40.0 #Growth coefficient
     n_model = 'auto' #model complexity (number of model-points, i.e. delta T)
     delta_ts = 'auto' #Range of delta-ts used to estimate L-curve. Specified as [min,max] of desired delta_t
@@ -527,7 +719,7 @@ def field_example_model_complexity():
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=int(n_models[i]), smoothness=0.0,calc_var=False)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
         err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0) #Model fit residual norm
@@ -543,7 +735,7 @@ def field_example_model_complexity():
        
     #Make a final calculation using the delta t found or defined
     N=n_model
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=N, smoothness=0.0)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=N, smoothness=0.0,calc_var=False)
    
     #Get solution and error norms for the chosen delta t
     um_fun=sint.interp1d(t_model,u_m_est) #Returns a function that interpolates
@@ -576,6 +768,13 @@ def field_example_model_complexity():
     plt.plot(t_model,u_a_est+2*u_a_std,color="lightgreen")
     plt.plot(t_model,u_a_est-2*u_a_std,color="lightgreen")        
     plt.show()
+
+
+#####################################################################################################
+
+####################################
+########## MAIN FUNCTION ###########
+####################################
         
 def deconv_master(u_slow,t,k,
                   sigma='auto',
@@ -592,41 +791,45 @@ def deconv_master(u_slow,t,k,
     u_a_estimate,u_m_estimate,model_time,std_uncertainty_estimate,fit_resids=
     deconv_master(data,time,k,delta_t='auto',delta_range='auto',num_sol=30)
        
-    Parameters: 
-        
+    Inputs: 
         u_slow: (N,)array_like 
             Convoluted sensor data
-        
         t: (N,)array_like 
             time vector for convoluted sensor data in seconds
-        
         k: (N,)array_like or float
             1/tau63, where tau63 is the response time. Growth coefficient.
-       
         sigma: (N,)array_like, float or None
             Measurement uncertainty. Given as array species uncertainty of each
             measurement. Float gives the same measurement uncertainty to all points
             None makes the algorithm estimate noise in the measurements using finite
             difference. 
-       
         delta_t: float or None
             Sets model complexity. Single float setting the desired resolution
-        of the modelled concentration in seconds. Default is 'auto', which finds the 
-        optimal resolution using L-curve analysis
-        
+            of the modelled concentration in seconds. Default is 'auto', which finds the 
+            optimal resolution using L-curve analysis
         delta_range: list or None
             Defines the range of delta ts you want to use in L-curve plot and
-        automated delta_t selection if delta_t='auto'. Default is 'auto' where 
-        delta t_range is set from 10 model points to len(data)/2 up to 2000 and 
-        the number of delta_t to check as defined by num_sol. 
-        
+            automated delta_t selection if delta_t='auto'. Default is 'auto' where 
+            delta t_range is set from 10 model points to len(data)/2 up to 2000 and 
+            the number of delta_t to check as defined by num_sol. 
         num_sol: integer or None
             Sets the number of solutions to estimate to make the L-curve. default 
             is 30.
-            
         N: Integer
             Sets the number of model points. default is "auto", which uses the 
             delta_t input overrides any delta_t if specified.
+
+    Outputs:
+        u_a_estimate: (N,)array_like
+            Estimated corrected data
+        u_m_estimate: (N,)array_like 
+            Estimated measurement data
+        model_time: (N,)array_like
+            Time vector for estimated corrected data
+        std_uncertainty_estimate: (N,)array_like
+            Uncertainty estimate (standard deviation) for estimated corrected data
+        fit_resids: (N,)array_like
+            Fit residuals for estimated corrected data
         
     '''
      
@@ -678,7 +881,7 @@ def deconv_master(u_slow,t,k,
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n.int(n_models[i]), smoothness=0.0,calc_var=False)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=int(n_models[i]), smoothness=0.0,calc_var=False)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
         err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0)
@@ -693,12 +896,12 @@ def deconv_master(u_slow,t,k,
         if delta_t == 'auto': #Run find_kink to detect optimal delta t if delta_t is not specified. 
             n_model = find_kink(err_norms,sol_norms,num_sol,n_models)    
         else: #If delta_t is specified 
-            n_model = n.int((max(t)-min(t))/delta_t) #If delta:t is specified
+            n_model = int((max(t)-min(t))/delta_t) #If delta:t is specified
     else:
         n_model = N #If N is specified
         
     ### Make final estimate using the delta_t found or defined:
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std = estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std = estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, calc_var=False)
     
     ### Get error and solution norms for the chosen delta t
     um_fun=sint.interp1d(t_model,u_m_est) #Returns a function that interpolates
@@ -745,15 +948,37 @@ def deconv_master(u_slow,t,k,
     plt.show()
     
     return(u_a_est,u_m_est,t_model,u_a_std,resid)
-          
+
+
+#####################################################################################################
+
+
+#######################################
+########### INITIALIZATION ############
+#######################################
+
+
 if __name__ == "__main__":
+
+    ###### RUNNING THE SOLUTIONS AND EXPERIMENTS PRESENTED IN DØLVEN ET AL., (2022) ######
+    
     #unit_step_test(pfname="unit_step.png",num_sol=100)    
     #unit_step_test(missing_meas=True,pfname="unit_step_missing.png")    
     #use model sparsity (finite number of samples) to regularize the solution   
     #field_example_model_complexity()
-    #Use deconv_master to deconvolve data from the field experiment:
-        
+
+    ##########################################################################
+
+    ###### RUNNING THE FIELD EXPERIMENT USING TIKHONOV REGULARIZATION #####
+    #field_example_tikhonov()
+
+    ##########################################################################
+
+    ##### RUN OTHER CASES USING THE MASTER FUNCTION #####
+    #Using the data from the field experiment as example input, just change these if you
+    #want to run your own cases....
     
+    #Input data: 
     d=sio.loadmat("fielddata.mat")
     t=n.copy(d["time"])[:,0]
     u_slow=n.copy(d["slow"])[:,0]
@@ -763,14 +988,12 @@ if __name__ == "__main__":
     t_fast = t
     sigma = 0.03*u_slow
     k = 1/(39*60) #In seconds because time vector is in seconds
-    
-   # deconv_master(u_slow,t,k,sigma = sigma,delta_t=500)#, N = 120,num_sol=1)
-   
     u_slow = u_slow[0:len(u_slow):1]
     t = t[0:len(t):1]   
     sigma = sigma[0:len(sigma):1]
     
+    #Running the master function with the input data:
     u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma)#, N = 120,num_sol=1)
 
- 
-   
+
+
