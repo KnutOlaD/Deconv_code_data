@@ -326,7 +326,8 @@ def estimate_concentration(u_m, #Measurements
                            k, #Growth coefficient
                            n_model=400, #Number of model points 
                            smoothness=0, #The amount of smoothness. Set to zero to turn off Tikhonov regularization
-                           calc_var=True): #True if you want to model error propagation
+                           calc_var=True,
+                           no_neg_sol = False): #True if you want to model error propagation
     """
     Function that estimates the concentration using a least squares solution of the theory matrix 
     calculated by the diffusion_theory function. Interpolates the solution onto a grid determined
@@ -367,8 +368,12 @@ def estimate_concentration(u_m, #Measurements
     A,m_v=diffusion_theory(u_m,k=k,t_meas=t_meas,t_model=t_model,sigma=u_m_stdev,smoothness=smoothness)
     
     #least squares solution
-    #xhat=so.nnls(A,m_v)[0] #If you need only positive values. 
-    xhat=n.linalg.lstsq(A,m_v)[0]        
+    #Check if you want to use non-negative least squares, it is much slower
+    if no_neg_sol:
+        xhat=so.nnls(A,m_v)[0] #If you need only positive values. 
+        print('Non-negative least squares used. This is much slower.')
+    else:
+        xhat=n.linalg.lstsq(A,m_v)[0] #If you accept negative values as well.    
     
     u_a_estimate=xhat[0:n_model]
     u_m_estimate=xhat[n_model:(2*n_model)]    
@@ -546,7 +551,12 @@ def unit_step_test(k=0.1, #growth coefficient
     
     #Look at residuals    
     N=n_model
-    u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m, noise_std, t, k, n_model=N, smoothness=0.0,calc_var=False)
+    u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m, 
+                                                                         noise_std, 
+                                                                         t, 
+                                                                         k, 
+                                                                         n_model=N, 
+                                                                         smoothness=0.0,calc_var=False)
 
     f = plt.figure()
     um_fun=sint.interp1d(t_modeln,u_m_est)
@@ -613,7 +623,13 @@ def field_example_tikhonov(): #same as sensor_example just with tikhonov regular
     sol_norms=n.zeros(n_L)    
     for i in range(n_L):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=sms[i],calc_var=False)
+        u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, 
+                                                                            sigma, 
+                                                                            m_t, 
+                                                                            k, 
+                                                                            n_model=n_model, 
+                                                                            smoothness=sms[i],
+                                                                            calc_var=False)
 
         um_fun=sint.interp1d(t_model,u_m_est)
         err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0)
@@ -631,7 +647,13 @@ def field_example_tikhonov(): #same as sensor_example just with tikhonov regular
 
     sm=10**(-4.0)
     print("fitting")    
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=sm,calc_var=False)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, 
+                                                                        sigma, 
+                                                                        m_t, 
+                                                                        k, 
+                                                                        n_model=n_model, 
+                                                                        smoothness=sm,
+                                                                        calc_var=False)
 
     print("plotting")
     plt.plot(m_t,m_u_slow)
@@ -719,7 +741,13 @@ def field_example_model_complexity():
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=int(n_models[i]), smoothness=0.0,calc_var=False)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, 
+                                                                             sigma, 
+                                                                             m_t, 
+                                                                             k, 
+                                                                             n_model=int(n_models[i]), 
+                                                                             smoothness=0.0,
+                                                                             calc_var=False)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
         err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0) #Model fit residual norm
@@ -735,7 +763,13 @@ def field_example_model_complexity():
        
     #Make a final calculation using the delta t found or defined
     N=n_model
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=N, smoothness=0.0,calc_var=False)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std= estimate_concentration(m_u_slow, 
+                                                                        sigma, 
+                                                                        m_t, 
+                                                                        k, 
+                                                                        n_model=N, 
+                                                                        smoothness=0.0,
+                                                                        calc_var=False)
    
     #Get solution and error norms for the chosen delta t
     um_fun=sint.interp1d(t_model,u_m_est) #Returns a function that interpolates
@@ -781,7 +815,8 @@ def deconv_master(u_slow,t,k,
                   delta_t='auto',
                   delta_range = 'auto',
                   num_sol=30,
-                  N = 'auto'):
+                  N = 'auto',
+                  no_neg_sol = False):
     ''' Function that deconvolves sensor data and returns vectors containing
     the estimated corrected data (u_a_estimate), measurement estimate (u_m_estimate), 
     model time (model_time), uncertainty estimate (standard deviation) 
@@ -818,6 +853,10 @@ def deconv_master(u_slow,t,k,
         N: Integer
             Sets the number of model points. default is "auto", which uses the 
             delta_t input overrides any delta_t if specified.
+        no_neg_sol: Boolean
+            If True, the algorithm will use a non-negative least squares solver. This
+            will make the algorithm slower, but will ensure that the solution is
+            non-negative. Default is False.
 
     Outputs:
         u_a_estimate: (N,)array_like
@@ -841,14 +880,18 @@ def deconv_master(u_slow,t,k,
     m_t=t[idx[0:n_meas]]
     
     ### Get measurement error standard deviation from differences if uncertainty is not
-    #specified: 
+    #specified an check if sigma is a scalar. If so, make it an array of the same length 
+    # as m_u_slow 
     if sigma == 'auto':
-        sigma = n.sqrt(n.var(n.diff(m_u_slow)))
-    elif len(sigma)==1:
+        sigma = n.sqrt(n.var(n.diff(m_u_slow)))*n.ones(len(m_u_slow))  
+    elif type(sigma) in (int,float):
         sigma = sigma*n.ones(len(m_u_slow))
     elif len(sigma) == len(m_u_slow):
         sigma = sigma
-        
+    else:
+        print("Sigma must be a scalar or an array of the same length as the data")
+        return
+    
     ###
     # L-curve analysis and if auto is on, find best delta_t 
     # In other words: try out different regularization parameters
@@ -881,7 +924,14 @@ def deconv_master(u_slow,t,k,
     #Make all estimations for L-curve analysis: 
     for i in range(len(n_models)):
         # don't calc a posteriori variance here, to speed things up
-        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, sigma, m_t, k, n_model=int(n_models[i]), smoothness=0.0,calc_var=False)
+        u_a_est, u_m_est, t_modeln, u_a_std, u_m_std= estimate_concentration(m_u_slow, 
+                                                                             sigma, 
+                                                                             m_t, 
+                                                                             k, 
+                                                                             n_model=int(n_models[i]), 
+                                                                             smoothness=0.0,
+                                                                             calc_var=False,
+                                                                             no_neg_sol=no_neg_sol)
         
         um_fun=sint.interp1d(t_modeln,u_m_est) #Returns a function that interpolates
         err_norms[i]=n.sum(n.abs(um_fun(m_t) - m_u_slow)**2.0)
@@ -901,7 +951,14 @@ def deconv_master(u_slow,t,k,
         n_model = N #If N is specified
         
     ### Make final estimate using the delta_t found or defined:
-    u_a_est, u_m_est, t_model, u_a_std, u_m_std = estimate_concentration(m_u_slow, sigma, m_t, k, n_model=n_model, smoothness=0.0, calc_var=False)
+    u_a_est, u_m_est, t_model, u_a_std, u_m_std, Sigma_p = estimate_concentration(m_u_slow, 
+                                                                         sigma, 
+                                                                         m_t, 
+                                                                         k, 
+                                                                         n_model=n_model, 
+                                                                         smoothness=0.0, 
+                                                                         calc_var=True,
+                                                                         no_neg_sol=no_neg_sol)
     
     ### Get error and solution norms for the chosen delta t
     um_fun=sint.interp1d(t_model,u_m_est) #Returns a function that interpolates
@@ -979,6 +1036,9 @@ if __name__ == "__main__":
     #want to run your own cases....
     
     #Input data: 
+    import os
+    current_dir=os.getcwd()
+    os.chdir(current_dir)
     d=sio.loadmat("fielddata.mat")
     t=n.copy(d["time"])[:,0]
     u_slow=n.copy(d["slow"])[:,0]
@@ -990,7 +1050,7 @@ if __name__ == "__main__":
     k = 1/(39*60) #In seconds because time vector is in seconds
     u_slow = u_slow[0:len(u_slow):1]
     t = t[0:len(t):1]   
-    sigma = sigma[0:len(sigma):1]
+    #sigma = sigma[0:len(sigma):1]
     
     #Running the master function with the input data:
     u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma)#, N = 120,num_sol=1)
