@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Dølven"
+- family-names: "D\olven"
   given-names: "Knut Ola"
   orcid: "https://orcid.org/0000-0002-5315-4834"
 - family-names: "Vierinen"
@@ -13,7 +13,7 @@ url: "https://github.com/KnutOlaD/Deconv_code_data"
 preferred-citation:
   type: article
   authors:
-  - family-names: "Dølven"
+  - family-names: "D\olven"
   given-names: "Knut Ola"
   orcid: "https://orcid.org/0000-0002-5315-4834"
   - family-names: "Vierinen"
