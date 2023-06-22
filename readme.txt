@@ -4,6 +4,7 @@ This README file was generated on 2022-04-05 by Knut Ola Dølven.
 GENERAL INFORMATION
 -------------------
 // Repository for code and data accompanying Dølven et al., (2022) (see bottom for publication info)
+// Contents: 
 
 // Contact Information
      // Name: Knut Ola Dølven	
@@ -28,7 +29,7 @@ The amount of regularization is optimized using L-curve analysis, but can also b
 knowledge. See commentary in deconv.py for specifics and Dølven et al. (2022) for a full detailed description.
 
 --------------------
-DATA & FILE OVERVIEW
+DATA & FILES OVERVIEW
 --------------------
 
 field_data.txt - data used in the field experiment in Dølven et al. (2022)
@@ -40,11 +41,10 @@ Lab_experiment_data - data used in the laboratory experiment in Dølven et al. (
 RTdetermination.csv - data used to determine the response time of the EB sensor
 for the field experiment in Dølven et al. (2022)
 
-deconv.py - Pytyon file containing all functions used in the deconv_master function
+deconv.py - Python file containing all functions used in the deconv_master function
 which does deconvolution as presented in the manuscript Dølven et al., 2021. Also include 
-functions used to produce the examples in the manuscript. See file for description of 
+functions used to produce the examples in the manuscript. See file for description for 
 content. 
-
 
 ---------------------------
 PUBLICATION AND HOW TO CITE
