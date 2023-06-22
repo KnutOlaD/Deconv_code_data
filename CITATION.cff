@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Dølven"
+  given-names: "Knut Ola"
+  orcid: "https://orcid.org/0000-0002-5315-4834"
+- family-names: "Vierinen"
+  given-names: "Juha"
+title: "Software code for doing response time correction of sensor using a deconvolution of the growth-law equation"
+version: 1.56
+date-released: 2022-08-11
+url: "https://github.com/KnutOlaD/Deconv_code_data"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Dølven"
+  given-names: "Knut Ola"
+  orcid: "https://orcid.org/0000-0002-5315-4834"
+  - family-names: "Vierinen"
+  given-names: "Juha"
+  - family-names: "Grilli"
+  given-names: "Roberto"
+  orcid: "https://orcid.org/0000-0001-5636-264X"
+  - family-names: "Triest"
+  given-names: "Jack"
+  - family-names: "Ferré"
+  given-names: "Bénédicte"
+  orcid: "https://orcid.org/0000-0003-1646-9287"
+  doi: "10.5194/gi-11-293-2022"
+  journal: "Geoscientific Instrumentation, Methods and Data Systems"
+  start: 293 # First page number
+  end: 306 # Last page number
+  title: "Response time correction of slow-response sensor data by deconvolution of the growth-law equation"
+  issue: 2
+  volume: 11
+  year: 2022
