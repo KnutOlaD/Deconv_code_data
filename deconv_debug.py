@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2022 Knut Ola Dølven <knut.o.dolven@uit.no> 
+# SPDX-FileCopyrightText: 2022 Juha Vierinen <juha.vierinen@uit.no>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 # -*- coding: utf-8 -*-
 """
 Created July 2021
