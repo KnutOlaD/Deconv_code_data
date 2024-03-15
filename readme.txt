@@ -44,7 +44,8 @@ for the field experiment in Dølven et al. (2022)
 deconv.py - Python file containing all functions used in the deconv_master function
 which does deconvolution as presented in the manuscript Dølven et al., 2021. Also include 
 functions used to produce the examples in the manuscript. See file for description for 
-content. 
+content. Test setup and a tiny how-to is at the bottom in the initation part of the script. 
+Scroll down and you'll see:-)
 
 ---------------------------
 PUBLICATION AND HOW TO CITE
