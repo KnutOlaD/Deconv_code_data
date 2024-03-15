@@ -1060,5 +1060,11 @@ if __name__ == "__main__":
     #Running the master function with the input data:
     u_a_est,u_m_est,t_model,u_a_std,resid = deconv_master(u_slow,t,k,sigma = sigma)#, N = 120,num_sol=1)
 
+    #u_slow is your slow raw signal (size Nx1)
+    #t is the time series for the slow raw signal (size Nx1)
+    #k is your k-value (1/tau_63) (size 1)
+    #sigma is the measurement uncertainty, either as a size Nx1 vector or as a size 1 scalar (for constant measurement
+    #uncertainty). 
+
 
 
